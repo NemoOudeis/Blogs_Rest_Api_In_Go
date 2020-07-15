@@ -3,3 +3,6 @@ bin/
 
 # env file
 .env
+
+# firestore admin credential
+yurie-s-go-api-firebase-adminsdk-qzfyx-d2587d9fd3.json
