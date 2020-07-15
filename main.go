@@ -8,10 +8,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func helloWorld(w http.ResponseWriter, r *http.Request) {
+func helloWorld(response http.ResponseWriter, request *http.Request) {
 	greeting := "Hello World!"
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(greeting)
+	response.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(response).Encode(greeting)
 }
 
 func main() {
