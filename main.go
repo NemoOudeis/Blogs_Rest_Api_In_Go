@@ -2,24 +2,14 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 
-	"google.golang.org/api/option"
-
+	"cloud.google.com/go/firestore"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-
-	firebase "firebase.google.com/go"
 )
-
-func helloWorld(response http.ResponseWriter, request *http.Request) {
-	greeting := "Hello World!"
-	response.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(response).Encode(greeting)
-}
 
 func loadEnvFileAndReturnEnvVarValueByKey(key string) string {
 	err := godotenv.Load(".env")
@@ -29,28 +19,36 @@ func loadEnvFileAndReturnEnvVarValueByKey(key string) string {
 	return os.Getenv(key)
 }
 
-func initFirebaseClientSDK() {
-	firebaseContext := context.Background()
-	firebaseServiceAccount := option.WithCredentialsFile("yurie-s-go-api-firebase-adminsdk-qzfyx-d2587d9fd3.json")
-	firebaseApp, err := firebase.NewApp(firebaseContext, nil, firebaseServiceAccount)
-	if err != nil {
-		log.Fatalf("Error initializing firebase app: %v", err)
-	}
+// Blogs is a structure which holds database and handler for database operation over HTTP calls
+type Blogs struct {
+	db *firestore.Client
+}
 
-	firestore, err := firebaseApp.Firestore(firebaseContext)
+func createFirestoreClient(firebaseContext context.Context) *firestore.Client {
+	projectID := loadEnvFileAndReturnEnvVarValueByKey("FIREBASE_PROJECT_ID")
+	firestoreClient, err := firestore.NewClient(firebaseContext, projectID)
 	if err != nil {
-		log.Fatalf("Error initializing firestore: %v", err)
+		log.Fatalf("Failed to create client firestore: %v", err)
 	}
+	return firestoreClient
+}
 
-	defer firestore.Close()
+func initBlogs(db *firestore.Client) *Blogs {
+	return &Blogs{db: db}
 }
 
 func main() {
 
-	initFirebaseClientSDK()
+	firebaseContext := context.Background()
+	db := createFirestoreClient(firebaseContext)
+	defer db.Close()
+
+	blogs := initBlogs(db)
+
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", helloWorld).Methods("GET")
+	router.HandleFunc("/", HelloWorld).Methods("GET")
+	router.HandleFunc("/blogs", GetAllBlogPosts).Methods("GET")
 	log.Println("Listening...")
 	log.Fatal(http.ListenAndServe(":8081", router))
 
