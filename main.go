@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
@@ -27,6 +28,17 @@ type Blogs struct {
 	db *firestore.Client
 }
 
+// Error is a structure which holds message for error, specifically in string json format
+type Error struct {
+	Message string `json:"message"`
+}
+
+func exitWithError(response http.ResponseWriter, statusCode int, statusMessage Error) {
+	response.WriteHeader(statusCode)
+	json.NewEncoder(response).Encode(statusMessage)
+	return
+}
+
 func createFirestoreClient(firebaseContext context.Context) *firestore.Client {
 	projectID := loadEnvFileAndReturnEnvVarValueByKey("FIREBASE_PROJECT_ID")
 	firestoreClient, err := firestore.NewClient(firebaseContext, projectID)
@@ -46,9 +58,60 @@ func helloWorld(response http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(response).Encode(greeting)
 }
 
-func getAllBlogPosts(response http.ResponseWriter, request *http.Request) {
+func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.Request) {
 	greeting := "GetAllBlogPosts..."
 	response.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(response).Encode(greeting)
+}
+
+func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.Request) {
+	greeting := "createBlogPost..."
+	response.Header().Set("Content-Type", "application/json")
+
+	if request.Method != http.MethodPost {
+		statusCode := http.StatusMethodNotAllowed
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		exitWithError(response, statusCode, statusMessage)
+	}
+
+	request.ParseForm()
+	urlEncodedFormInputMap := request.Form
+	title, isTitleFound := urlEncodedFormInputMap["title"]
+	content, isContentFound := urlEncodedFormInputMap["content"]
+
+	if isTitleFound == false || isContentFound == false {
+		statusCode := http.StatusBadRequest
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		exitWithError(response, statusCode, statusMessage)
+	}
+
+	result, _, err := blogs.db.Collection("blogs").Add(context.Background(), map[string]interface{}{
+		"title":      title,
+		"content":    content,
+		"created_at": time.Now(),
+	})
+
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		exitWithError(response, statusCode, statusMessage)
+	}
+
+	// type createSuccessMessage struct {
+	// 	id string
+	// 	title string
+	// 	content string
+	// 	createdAt string
+	// }
+	//log.Println(result.ID, err)
+	//json.NewDecoder(response.Body).Decode()
+
 	json.NewEncoder(response).Encode(greeting)
 }
 
@@ -78,12 +141,13 @@ func main() {
 
 	defer client.Close()
 
-	//blogs := initBlogs(db)
+	blogs := initBlogs(client)
 
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", helloWorld).Methods("GET")
-	router.HandleFunc("/blogs", getAllBlogPosts).Methods("GET")
+	router.HandleFunc("/blogs", blogs.getAllBlogPosts).Methods("GET")
+	router.HandleFunc("/blogs/create", blogs.createBlogPost).Methods("POST")
 	log.Println("Listening...")
 	log.Fatal(http.ListenAndServe(":8081", router))
 
