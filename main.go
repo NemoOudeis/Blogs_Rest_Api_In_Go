@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 
 	"cloud.google.com/go/firestore"
+	firebase "firebase.google.com/go"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"google.golang.org/api/option"
 )
 
 func loadEnvFileAndReturnEnvVarValueByKey(key string) string {
@@ -37,18 +40,50 @@ func initBlogs(db *firestore.Client) *Blogs {
 	return &Blogs{db: db}
 }
 
+func helloWorld(response http.ResponseWriter, request *http.Request) {
+	greeting := "Hello World!"
+	response.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(response).Encode(greeting)
+}
+
+func getAllBlogPosts(response http.ResponseWriter, request *http.Request) {
+	greeting := "GetAllBlogPosts..."
+	response.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(response).Encode(greeting)
+}
+
 func main() {
 
-	firebaseContext := context.Background()
-	db := createFirestoreClient(firebaseContext)
-	defer db.Close()
+	ctx := context.Background()
+	sa := option.WithCredentialsFile("yurie-s-go-api-firebase-adminsdk-qzfyx-d2587d9fd3.json")
+	app, err := firebase.NewApp(ctx, nil, sa)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-	blogs := initBlogs(db)
+	client, err := app.Firestore(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	result, err := client.Collection("blogs").Doc("test").Set(context.Background(), map[string]interface{}{
+		"first": "Ada",
+		"last":  "Lovelace",
+		"born":  1815,
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(result)
+
+	defer client.Close()
+
+	//blogs := initBlogs(db)
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", HelloWorld).Methods("GET")
-	router.HandleFunc("/blogs", GetAllBlogPosts).Methods("GET")
+	router.HandleFunc("/", helloWorld).Methods("GET")
+	router.HandleFunc("/blogs", getAllBlogPosts).Methods("GET")
 	log.Println("Listening...")
 	log.Fatal(http.ListenAndServe(":8081", router))
 
