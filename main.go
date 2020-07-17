@@ -13,6 +13,7 @@ import (
 	firebase "firebase.google.com/go"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
@@ -59,6 +60,13 @@ func returnSuccessfulResponse(response http.ResponseWriter, statusCode int, stat
 	json.NewEncoder(response).Encode(statusMessage)
 }
 
+func successJSONGenerator(msgVal, dataVal interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"Message": msgVal,
+		"Data":    dataVal,
+	}
+}
+
 func createFirestoreClient(firebaseContext context.Context) *firestore.Client {
 	projectID := loadEnvFileAndReturnEnvVarValueByKey("FIREBASE_PROJECT_ID")
 	firestoreClient, err := firestore.NewClient(firebaseContext, projectID)
@@ -79,9 +87,63 @@ func helloWorld(response http.ResponseWriter, request *http.Request) {
 }
 
 func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.Request) {
-	greeting := "GetAllBlogPosts..."
 	response.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(response).Encode(greeting)
+
+	if request.Method != http.MethodGet {
+		statusCode := http.StatusMethodNotAllowed
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		exitWithError(response, statusCode, statusMessage)
+	}
+
+	type BlogPost struct {
+		ID         string `json:"id"`
+		Title      string `json:"title"`
+		Content    string `json:"content"`
+		CreatedAt  string `json:"created_at"`
+		ModifiedAt string `json:"modified_at,omitempty"`
+	}
+
+	docSnapshotIter := blogs.db.Collection("blogs").Documents(context.Background())
+	var allBlogPosts []BlogPost
+	for {
+		doc, err := docSnapshotIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			statusCode := http.StatusInternalServerError
+			statusMessage := Error{
+				Message: http.StatusText(statusCode),
+			}
+			exitWithError(response, statusCode, statusMessage)
+		}
+
+		docSnapshotDatum := doc.Data()
+
+		optionalModifiedField := docSnapshotDatum["modified_at"]
+		var ModifiedField string
+		if optionalModifiedField != nil {
+			ModifiedField = docSnapshotDatum["modified_at"].(string)
+		} else {
+			ModifiedField = ""
+		}
+
+		blogPost := BlogPost{
+			ID:         doc.Ref.ID,
+			Title:      docSnapshotDatum["title"].(string),
+			Content:    docSnapshotDatum["content"].(string),
+			CreatedAt:  docSnapshotDatum["created_at"].(string),
+			ModifiedAt: ModifiedField,
+		}
+		allBlogPosts = append(allBlogPosts, blogPost)
+	}
+
+	statusCode := http.StatusCreated
+	statusMessage := successJSONGenerator(http.StatusText(statusCode), allBlogPosts)
+	response.WriteHeader(statusCode)
+	json.NewEncoder(response).Encode(statusMessage)
 }
 
 func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.Request) {
