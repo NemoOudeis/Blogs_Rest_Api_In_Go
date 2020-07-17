@@ -161,16 +161,6 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	result, err := client.Collection("blogs").Doc("test").Set(context.Background(), map[string]interface{}{
-		"first": "Ada",
-		"last":  "Lovelace",
-		"born":  1815,
-	})
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(result)
-
 	defer client.Close()
 
 	blogs := initBlogs(client)
