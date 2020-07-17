@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -28,15 +29,34 @@ type Blogs struct {
 	db *firestore.Client
 }
 
-// Error is a structure which holds message for error, specifically in string json format
+// CreatedBlogPost holds fields which newly created data holds
+type CreatedBlogPost struct {
+	ID        string
+	Title     string
+	Content   string
+	CreatedAt string
+}
+
+// Error is a structure which holds message for error in string json format
 type Error struct {
 	Message string `json:"message"`
+}
+
+// Success is a structure which holds message for successful db operation in string json format
+type Success struct {
+	Message     string          `json:"message"`
+	NewBlogPost CreatedBlogPost `json:"newBlogPost"`
 }
 
 func exitWithError(response http.ResponseWriter, statusCode int, statusMessage Error) {
 	response.WriteHeader(statusCode)
 	json.NewEncoder(response).Encode(statusMessage)
 	return
+}
+
+func returnSuccessfulResponse(response http.ResponseWriter, statusCode int, statusMessage Success) {
+	response.WriteHeader(statusCode)
+	json.NewEncoder(response).Encode(statusMessage)
 }
 
 func createFirestoreClient(firebaseContext context.Context) *firestore.Client {
@@ -65,7 +85,6 @@ func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.
 }
 
 func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.Request) {
-	greeting := "createBlogPost..."
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodPost {
@@ -90,9 +109,9 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 	}
 
 	result, _, err := blogs.db.Collection("blogs").Add(context.Background(), map[string]interface{}{
-		"title":      title,
-		"content":    content,
-		"created_at": time.Now(),
+		"title":      strings.Join(title, ""),
+		"content":    strings.Join(content, ""),
+		"created_at": time.Now().String(),
 	})
 
 	if err != nil {
@@ -103,16 +122,29 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 		exitWithError(response, statusCode, statusMessage)
 	}
 
-	// type createSuccessMessage struct {
-	// 	id string
-	// 	title string
-	// 	content string
-	// 	createdAt string
-	// }
-	//log.Println(result.ID, err)
-	//json.NewDecoder(response.Body).Decode()
+	docSnapshot, err := blogs.db.Collection("blogs").Doc(result.ID).Get(context.Background())
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		exitWithError(response, statusCode, statusMessage)
+	}
+	docSnapshotDatum := docSnapshot.Data()
 
-	json.NewEncoder(response).Encode(greeting)
+	newBlogPost := CreatedBlogPost{
+		ID:        result.ID,
+		Title:     docSnapshotDatum["title"].(string),
+		Content:   docSnapshotDatum["content"].(string),
+		CreatedAt: docSnapshotDatum["created_at"].(string),
+	}
+
+	statusCode := http.StatusCreated
+	statusMessage := Success{
+		Message:     http.StatusText(statusCode),
+		NewBlogPost: newBlogPost,
+	}
+	returnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
 func main() {
