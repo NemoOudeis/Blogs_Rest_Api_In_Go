@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"google.golang.org/api/iterator"
 )
 
@@ -132,5 +133,63 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 
 	statusCode := http.StatusCreated
 	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), newBlogPost)
+	ReturnSuccessfulResponse(response, statusCode, statusMessage)
+}
+
+func (blogs *Blogs) getBlogPostByID(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
+
+	if request.Method != http.MethodGet {
+		statusCode := http.StatusMethodNotAllowed
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	param := mux.Vars(request)
+	ID := param["id"]
+
+	if len(ID) == 0 {
+		statusCode := http.StatusBadRequest
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	docSnapshot, err := blogs.db.Collection("blogs").Doc(ID).Get(context.Background())
+	if err != nil {
+		statusCode := http.StatusServiceUnavailable
+		statusMessage := Error{
+			// err.Error() is a custom error message from client firestore API
+			Message: err.Error(),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	docSnapshotDatum := docSnapshot.Data()
+
+	optionalModifiedField := docSnapshotDatum["modified_at"]
+	var ModifiedField string
+	if optionalModifiedField != nil {
+		ModifiedField = docSnapshotDatum["modified_at"].(string)
+	} else {
+		ModifiedField = ""
+	}
+
+	blogPost := BlogPost{
+		ID:         docSnapshot.Ref.ID,
+		Title:      docSnapshotDatum["title"].(string),
+		Content:    docSnapshotDatum["content"].(string),
+		CreatedAt:  docSnapshotDatum["created_at"].(string),
+		ModifiedAt: ModifiedField,
+	}
+
+	statusCode := http.StatusOK
+	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), blogPost)
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
