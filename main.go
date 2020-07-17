@@ -27,14 +27,6 @@ type Blogs struct {
 	db *firestore.Client
 }
 
-// CreatedBlogPost holds fields which newly created data holds
-type CreatedBlogPost struct {
-	ID        string
-	Title     string
-	Content   string
-	CreatedAt string
-}
-
 // BlogPost is a standard format of single blog post data (document snapshot)
 type BlogPost struct {
 	ID         string `json:"id"`
