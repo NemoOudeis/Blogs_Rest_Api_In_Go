@@ -13,7 +13,6 @@ import (
 	firebase "firebase.google.com/go"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
@@ -52,18 +51,21 @@ type Error struct {
 	Message string `json:"message"`
 }
 
-func exitWithError(response http.ResponseWriter, statusCode int, statusMessage Error) {
+// ExitWithError exits from a function when any type of err was caught during http communication
+func ExitWithError(response http.ResponseWriter, statusCode int, statusMessage Error) {
 	response.WriteHeader(statusCode)
 	json.NewEncoder(response).Encode(statusMessage)
 	return
 }
 
-func returnSuccessfulResponse(response http.ResponseWriter, statusCode int, statusMessage map[string]interface{}) {
+// ReturnSuccessfulResponse returns a success message to the client
+func ReturnSuccessfulResponse(response http.ResponseWriter, statusCode int, statusMessage map[string]interface{}) {
 	response.WriteHeader(statusCode)
 	json.NewEncoder(response).Encode(statusMessage)
 }
 
-func successJSONGenerator(msgVal, dataVal interface{}) map[string]interface{} {
+// SuccessJSONGenerator is a factory to generate message when job is successfully finished over http connection
+func SuccessJSONGenerator(msgVal, dataVal interface{}) map[string]interface{} {
 	return map[string]interface{}{
 		"Message": msgVal,
 		"Data":    dataVal,
@@ -74,57 +76,6 @@ func initBlogs(db *firestore.Client) *Blogs {
 	return &Blogs{db: db}
 }
 
-func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
-
-	if request.Method != http.MethodGet {
-		statusCode := http.StatusMethodNotAllowed
-		statusMessage := Error{
-			Message: http.StatusText(statusCode),
-		}
-		exitWithError(response, statusCode, statusMessage)
-	}
-
-	docSnapshotIter := blogs.db.Collection("blogs").Documents(context.Background())
-	var allBlogPosts []BlogPost
-	for {
-		doc, err := docSnapshotIter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			statusCode := http.StatusInternalServerError
-			statusMessage := Error{
-				Message: http.StatusText(statusCode),
-			}
-			exitWithError(response, statusCode, statusMessage)
-		}
-
-		docSnapshotDatum := doc.Data()
-
-		optionalModifiedField := docSnapshotDatum["modified_at"]
-		var ModifiedField string
-		if optionalModifiedField != nil {
-			ModifiedField = docSnapshotDatum["modified_at"].(string)
-		} else {
-			ModifiedField = ""
-		}
-
-		blogPost := BlogPost{
-			ID:         doc.Ref.ID,
-			Title:      docSnapshotDatum["title"].(string),
-			Content:    docSnapshotDatum["content"].(string),
-			CreatedAt:  docSnapshotDatum["created_at"].(string),
-			ModifiedAt: ModifiedField,
-		}
-		allBlogPosts = append(allBlogPosts, blogPost)
-	}
-
-	statusCode := http.StatusOK
-	statusMessage := successJSONGenerator(http.StatusText(statusCode), allBlogPosts)
-	returnSuccessfulResponse(response, statusCode, statusMessage)
-}
-
 func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
@@ -133,7 +84,7 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 		statusMessage := Error{
 			Message: http.StatusText(statusCode),
 		}
-		exitWithError(response, statusCode, statusMessage)
+		ExitWithError(response, statusCode, statusMessage)
 	}
 
 	request.ParseForm()
@@ -146,7 +97,7 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 		statusMessage := Error{
 			Message: http.StatusText(statusCode),
 		}
-		exitWithError(response, statusCode, statusMessage)
+		ExitWithError(response, statusCode, statusMessage)
 	}
 
 	result, _, err := blogs.db.Collection("blogs").Add(context.Background(), map[string]interface{}{
@@ -160,7 +111,7 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 		statusMessage := Error{
 			Message: http.StatusText(statusCode),
 		}
-		exitWithError(response, statusCode, statusMessage)
+		ExitWithError(response, statusCode, statusMessage)
 	}
 
 	docSnapshot, err := blogs.db.Collection("blogs").Doc(result.ID).Get(context.Background())
@@ -169,7 +120,7 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 		statusMessage := Error{
 			Message: http.StatusText(statusCode),
 		}
-		exitWithError(response, statusCode, statusMessage)
+		ExitWithError(response, statusCode, statusMessage)
 	}
 	docSnapshotDatum := docSnapshot.Data()
 
@@ -182,8 +133,8 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 	}
 
 	statusCode := http.StatusCreated
-	statusMessage := successJSONGenerator(http.StatusText(statusCode), newBlogPost)
-	returnSuccessfulResponse(response, statusCode, statusMessage)
+	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), newBlogPost)
+	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
 func main() {
