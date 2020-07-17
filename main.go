@@ -38,15 +38,18 @@ type CreatedBlogPost struct {
 	CreatedAt string
 }
 
+// BlogPost is a standard format of single blog post data (document snapshot)
+type BlogPost struct {
+	ID         string `json:"id"`
+	Title      string `json:"title"`
+	Content    string `json:"content"`
+	CreatedAt  string `json:"created_at"`
+	ModifiedAt string `json:"modified_at,omitempty"`
+}
+
 // Error is a structure which holds message for error in string json format
 type Error struct {
 	Message string `json:"message"`
-}
-
-// Success is a structure which holds message for successful db operation in string json format
-type Success struct {
-	Message     string          `json:"message"`
-	NewBlogPost CreatedBlogPost `json:"newBlogPost"`
 }
 
 func exitWithError(response http.ResponseWriter, statusCode int, statusMessage Error) {
@@ -55,7 +58,7 @@ func exitWithError(response http.ResponseWriter, statusCode int, statusMessage E
 	return
 }
 
-func returnSuccessfulResponse(response http.ResponseWriter, statusCode int, statusMessage Success) {
+func returnSuccessfulResponse(response http.ResponseWriter, statusCode int, statusMessage map[string]interface{}) {
 	response.WriteHeader(statusCode)
 	json.NewEncoder(response).Encode(statusMessage)
 }
@@ -65,15 +68,6 @@ func successJSONGenerator(msgVal, dataVal interface{}) map[string]interface{} {
 		"Message": msgVal,
 		"Data":    dataVal,
 	}
-}
-
-func createFirestoreClient(firebaseContext context.Context) *firestore.Client {
-	projectID := loadEnvFileAndReturnEnvVarValueByKey("FIREBASE_PROJECT_ID")
-	firestoreClient, err := firestore.NewClient(firebaseContext, projectID)
-	if err != nil {
-		log.Fatalf("Failed to create client firestore: %v", err)
-	}
-	return firestoreClient
 }
 
 func initBlogs(db *firestore.Client) *Blogs {
@@ -95,14 +89,6 @@ func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.
 			Message: http.StatusText(statusCode),
 		}
 		exitWithError(response, statusCode, statusMessage)
-	}
-
-	type BlogPost struct {
-		ID         string `json:"id"`
-		Title      string `json:"title"`
-		Content    string `json:"content"`
-		CreatedAt  string `json:"created_at"`
-		ModifiedAt string `json:"modified_at,omitempty"`
 	}
 
 	docSnapshotIter := blogs.db.Collection("blogs").Documents(context.Background())
@@ -140,10 +126,9 @@ func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.
 		allBlogPosts = append(allBlogPosts, blogPost)
 	}
 
-	statusCode := http.StatusCreated
+	statusCode := http.StatusOK
 	statusMessage := successJSONGenerator(http.StatusText(statusCode), allBlogPosts)
-	response.WriteHeader(statusCode)
-	json.NewEncoder(response).Encode(statusMessage)
+	returnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
 func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.Request) {
@@ -194,18 +179,16 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 	}
 	docSnapshotDatum := docSnapshot.Data()
 
-	newBlogPost := CreatedBlogPost{
-		ID:        result.ID,
-		Title:     docSnapshotDatum["title"].(string),
-		Content:   docSnapshotDatum["content"].(string),
-		CreatedAt: docSnapshotDatum["created_at"].(string),
+	newBlogPost := BlogPost{
+		ID:         result.ID,
+		Title:      docSnapshotDatum["title"].(string),
+		Content:    docSnapshotDatum["content"].(string),
+		CreatedAt:  docSnapshotDatum["created_at"].(string),
+		ModifiedAt: "",
 	}
 
 	statusCode := http.StatusCreated
-	statusMessage := Success{
-		Message:     http.StatusText(statusCode),
-		NewBlogPost: newBlogPost,
-	}
+	statusMessage := successJSONGenerator(http.StatusText(statusCode), newBlogPost)
 	returnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
