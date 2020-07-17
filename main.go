@@ -74,12 +74,6 @@ func initBlogs(db *firestore.Client) *Blogs {
 	return &Blogs{db: db}
 }
 
-func helloWorld(response http.ResponseWriter, request *http.Request) {
-	greeting := "Hello World!"
-	response.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(response).Encode(greeting)
-}
-
 func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
@@ -212,7 +206,7 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", helloWorld).Methods("GET")
+	router.HandleFunc("/", HelloWorld).Methods("GET")
 	router.HandleFunc("/blogs", blogs.getAllBlogPosts).Methods("GET")
 	router.HandleFunc("/blogs/create", blogs.createBlogPost).Methods("POST")
 	log.Println("Listening...")
