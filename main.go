@@ -45,7 +45,6 @@ type Error struct {
 func ExitWithError(response http.ResponseWriter, statusCode int, statusMessage Error) {
 	response.WriteHeader(statusCode)
 	json.NewEncoder(response).Encode(statusMessage)
-	return
 }
 
 // ReturnSuccessfulResponse returns a success message to the client
@@ -87,8 +86,8 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", HelloWorld).Methods("GET")
-	router.HandleFunc("/blogs", blogs.getAllBlogPosts).Methods("GET")
-	router.HandleFunc("/blogs/create", blogs.createBlogPost).Methods("POST")
+	router.HandleFunc("/blogs", blogs.getAllBlogPosts)
+	router.HandleFunc("/blogs/create", blogs.createBlogPost)
 	log.Println("Listening...")
 	log.Fatal(http.ListenAndServe(":8081", router))
 }

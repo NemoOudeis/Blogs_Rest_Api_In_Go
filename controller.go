@@ -26,6 +26,7 @@ func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.
 			Message: http.StatusText(statusCode),
 		}
 		ExitWithError(response, statusCode, statusMessage)
+		return
 	}
 
 	docSnapshotIter := blogs.db.Collection("blogs").Documents(context.Background())
@@ -41,6 +42,7 @@ func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.
 				Message: http.StatusText(statusCode),
 			}
 			ExitWithError(response, statusCode, statusMessage)
+			return
 		}
 
 		docSnapshotDatum := doc.Data()
@@ -77,6 +79,7 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 			Message: http.StatusText(statusCode),
 		}
 		ExitWithError(response, statusCode, statusMessage)
+		return
 	}
 
 	request.ParseForm()
@@ -90,6 +93,7 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 			Message: http.StatusText(statusCode),
 		}
 		ExitWithError(response, statusCode, statusMessage)
+		return
 	}
 
 	result, _, err := blogs.db.Collection("blogs").Add(context.Background(), map[string]interface{}{
@@ -104,6 +108,7 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 			Message: http.StatusText(statusCode),
 		}
 		ExitWithError(response, statusCode, statusMessage)
+		return
 	}
 
 	docSnapshot, err := blogs.db.Collection("blogs").Doc(result.ID).Get(context.Background())
@@ -113,6 +118,7 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 			Message: http.StatusText(statusCode),
 		}
 		ExitWithError(response, statusCode, statusMessage)
+		return
 	}
 	docSnapshotDatum := docSnapshot.Data()
 
