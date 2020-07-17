@@ -89,6 +89,8 @@ func main() {
 	router.HandleFunc("/blogs", blogs.getAllBlogPosts)
 	router.HandleFunc("/blogs/create", blogs.createBlogPost)
 	router.HandleFunc("/blogs/{id}", blogs.getBlogPostByID)
+	router.HandleFunc("/blogs/delete/{id}", blogs.deleteBlogPostByID)
+
 	log.Println("Listening...")
 	log.Fatal(http.ListenAndServe(":8081", router))
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -191,5 +192,57 @@ func (blogs *Blogs) getBlogPostByID(response http.ResponseWriter, request *http.
 
 	statusCode := http.StatusOK
 	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), blogPost)
+	ReturnSuccessfulResponse(response, statusCode, statusMessage)
+}
+
+func (blogs *Blogs) deleteBlogPostByID(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
+
+	if request.Method != http.MethodDelete {
+		statusCode := http.StatusMethodNotAllowed
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	param := mux.Vars(request)
+	ID := param["id"]
+	if len(ID) == 0 {
+		statusCode := http.StatusBadRequest
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	_, err := blogs.db.Collection("blogs").Doc(ID).Get(context.Background())
+	if err != nil {
+		statusCode := http.StatusServiceUnavailable
+		statusMessage := Error{
+			// err.Error() is a custom error message from client firestore API
+			Message: err.Error(),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	_, err = blogs.db.Collection("blogs").Doc(ID).Delete(context.Background())
+	if err != nil {
+		statusCode := http.StatusServiceUnavailable
+		statusMessage := Error{
+			// err.Error() is a custom error message from client firestore API
+			Message: err.Error(),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	customMessage := fmt.Sprintf("The Blog post with ID %s was successfully deleted.", ID)
+
+	statusCode := http.StatusOK
+	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), customMessage)
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
