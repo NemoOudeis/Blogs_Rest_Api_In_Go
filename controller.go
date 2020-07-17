@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
+	"time"
 
 	"google.golang.org/api/iterator"
 )
@@ -63,5 +65,66 @@ func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.
 
 	statusCode := http.StatusOK
 	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), allBlogPosts)
+	ReturnSuccessfulResponse(response, statusCode, statusMessage)
+}
+
+func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
+
+	if request.Method != http.MethodPost {
+		statusCode := http.StatusMethodNotAllowed
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+	}
+
+	request.ParseForm()
+	urlEncodedFormInputMap := request.Form
+	title, isTitleFound := urlEncodedFormInputMap["title"]
+	content, isContentFound := urlEncodedFormInputMap["content"]
+
+	if isTitleFound == false || isContentFound == false {
+		statusCode := http.StatusBadRequest
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+	}
+
+	result, _, err := blogs.db.Collection("blogs").Add(context.Background(), map[string]interface{}{
+		"title":      strings.Join(title, ""),
+		"content":    strings.Join(content, ""),
+		"created_at": time.Now().String(),
+	})
+
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+	}
+
+	docSnapshot, err := blogs.db.Collection("blogs").Doc(result.ID).Get(context.Background())
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+	}
+	docSnapshotDatum := docSnapshot.Data()
+
+	newBlogPost := BlogPost{
+		ID:         result.ID,
+		Title:      docSnapshotDatum["title"].(string),
+		Content:    docSnapshotDatum["content"].(string),
+		CreatedAt:  docSnapshotDatum["created_at"].(string),
+		ModifiedAt: "",
+	}
+
+	statusCode := http.StatusCreated
+	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), newBlogPost)
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
