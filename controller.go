@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"github.com/gorilla/mux"
 	"google.golang.org/api/iterator"
 )
@@ -241,6 +242,78 @@ func (blogs *Blogs) deleteBlogPostByID(response http.ResponseWriter, request *ht
 	}
 
 	customMessage := fmt.Sprintf("The Blog post with ID %s was successfully deleted.", ID)
+
+	statusCode := http.StatusOK
+	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), customMessage)
+	ReturnSuccessfulResponse(response, statusCode, statusMessage)
+}
+
+func (blogs *Blogs) updateBlogPostByID(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
+
+	if request.Method != http.MethodPut {
+		statusCode := http.StatusMethodNotAllowed
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	request.ParseForm()
+	urlEncodedFormInputMap := request.Form
+	title, isTitleFound := urlEncodedFormInputMap["title"]
+	content, isContentFound := urlEncodedFormInputMap["content"]
+
+	if isTitleFound == false || isContentFound == false {
+		statusCode := http.StatusBadRequest
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	param := mux.Vars(request)
+	ID := param["id"]
+	if len(ID) == 0 {
+		statusCode := http.StatusBadRequest
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	ref := blogs.db.Collection("blogs").Doc(ID)
+	err := blogs.db.RunTransaction(context.Background(), func(ctx context.Context, tx *firestore.Transaction) error {
+		_, err := tx.Get(ref)
+		if err != nil {
+			statusCode := http.StatusServiceUnavailable
+			statusMessage := Error{
+				// err.Error() is a custom error message from client firestore API
+				Message: err.Error(),
+			}
+			ExitWithError(response, statusCode, statusMessage)
+			return nil
+		}
+
+		return tx.Set(ref, map[string]interface{}{
+			"title":       strings.Join(title, ""),
+			"content":     strings.Join(content, ""),
+			"modified_at": time.Now().String(),
+		}, firestore.MergeAll)
+	})
+	if err != nil {
+		statusCode := http.StatusServiceUnavailable
+		statusMessage := Error{
+			// err.Error() is a custom error message from client firestore API
+			Message: err.Error(),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+	}
+
+	customMessage := fmt.Sprintf("The Blog post with ID %s was successfully updated.", ID)
 
 	statusCode := http.StatusOK
 	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), customMessage)
