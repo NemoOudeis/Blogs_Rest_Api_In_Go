@@ -8,5 +8,6 @@ require (
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/gorilla/mux v1.7.4
 	github.com/joho/godotenv v1.3.0
+	go.uber.org/yarpc v1.46.0 // indirect
 	google.golang.org/api v0.29.0
 )
