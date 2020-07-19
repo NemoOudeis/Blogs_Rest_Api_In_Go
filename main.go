@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -37,9 +38,9 @@ type Users struct {
 
 // User holds basic user info of a current user
 type User struct {
-	UID      string `json:"uid"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	GeneratedID string `json:"id"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
 }
 
 func initUsers(db *firestore.Client, authClient *auth.Client) *Users {
@@ -177,6 +178,44 @@ func (users *Users) signup(response http.ResponseWriter, request *http.Request) 
 		return
 	}
 
-	log.Printf("Successfully created user: %v\n", newUser.UserInfo)
+	newUserInfo := User{
+		GeneratedID: newUser.UID,
+		Email:       strings.Join(email, ""),
+		Password:    strings.Join(password, ""),
+	}
 
+	result, _, err := users.db.Collection("users").Add(context.Background(), map[string]interface{}{
+		"id":       newUserInfo.GeneratedID,
+		"email":    newUserInfo.Email,
+		"password": newUserInfo.Password,
+	})
+
+	if err != nil {
+		statusCode := http.StatusServiceUnavailable
+		statusMessage := Error{
+			// err.Error() is a custom error message from client firestore API
+			Message: err.Error(),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	docSnapshot, err := users.db.Collection("users").Doc(result.ID).Get(context.Background())
+	if err != nil {
+		statusCode := http.StatusServiceUnavailable
+		statusMessage := Error{
+			// err.Error() is a custom error message from client firestore API
+			Message: err.Error(),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	docSnapshotDatum := docSnapshot.Data()
+	userEmailFromDB := docSnapshotDatum["email"].(string)
+	customMessage := fmt.Sprintf("New user was created with this email: %s", userEmailFromDB)
+
+	statusCode := http.StatusCreated
+	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), customMessage)
+	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
