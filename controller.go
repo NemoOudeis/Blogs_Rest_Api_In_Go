@@ -20,6 +20,24 @@ func HelloWorld(response http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(response).Encode(greeting)
 }
 
+// Blogs is a structure which holds database and handler for database operation over HTTP calls
+type Blogs struct {
+	db *firestore.Client
+}
+
+// BlogPost is a standard format of single blog post data (document snapshot)
+type BlogPost struct {
+	ID         string `json:"id"`
+	Title      string `json:"title"`
+	Content    string `json:"content"`
+	CreatedAt  string `json:"created_at"`
+	ModifiedAt string `json:"modified_at,omitempty"`
+}
+
+func initBlogs(db *firestore.Client) *Blogs {
+	return &Blogs{db: db}
+}
+
 func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
