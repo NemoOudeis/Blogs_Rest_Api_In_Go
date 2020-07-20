@@ -293,4 +293,18 @@ func (users *Users) login(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	token, err := users.authClient.CustomToken(context.Background(), userInfoFromDB["id"].(string))
+	if err != nil {
+		statusCode := http.StatusServiceUnavailable
+		statusMessage := Error{
+			// err.Error() is a custom error message from client firestore API
+			Message: err.Error(),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	statusCode := http.StatusOK
+	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), token)
+	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
