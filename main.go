@@ -115,6 +115,7 @@ func main() {
 	router.HandleFunc("/", HelloWorld).Methods("GET")
 
 	router.HandleFunc("/signup", users.signup)
+	router.HandleFunc("/login", users.login)
 
 	router.HandleFunc("/blogs", blogs.getAllBlogPosts)
 	router.HandleFunc("/blogs/create", blogs.createBlogPost)
@@ -127,6 +128,8 @@ func main() {
 }
 
 func (users *Users) signup(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
+
 	if request.Method != http.MethodPost {
 		statusCode := http.StatusMethodNotAllowed
 		statusMessage := Error{
@@ -218,4 +221,76 @@ func (users *Users) signup(response http.ResponseWriter, request *http.Request) 
 	statusCode := http.StatusCreated
 	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), customMessage)
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
+}
+
+func (users *Users) login(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
+
+	if request.Method != http.MethodPost {
+		statusCode := http.StatusMethodNotAllowed
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	request.ParseForm()
+	urlEncodedFormInputMap := request.Form
+	email, isEmailFound := urlEncodedFormInputMap["email"]
+	password, isPasswordFound := urlEncodedFormInputMap["password"]
+
+	if isEmailFound == false {
+		statusCode := http.StatusBadRequest
+		statusMessage := Error{
+			Message:       http.StatusText(statusCode),
+			CustomMessage: "Email is required.",
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	if isPasswordFound == false {
+		statusCode := http.StatusBadRequest
+		statusMessage := Error{
+			Message:       http.StatusText(statusCode),
+			CustomMessage: "Password is required.",
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	iter := users.db.Collection("users").Where("email", "==", strings.Join(email, "")).Limit(1).Documents(context.Background())
+	doc, err := iter.GetAll()
+	if err != nil {
+		statusCode := http.StatusServiceUnavailable
+		statusMessage := Error{
+			// err.Error() is a custom error message from client firestore API
+			Message: err.Error(),
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	if len(doc) == 0 {
+		statusCode := http.StatusBadRequest
+		statusMessage := Error{
+			Message:       http.StatusText(statusCode),
+			CustomMessage: "Login failed. The user does not exist.",
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
+	userInfoFromDB := doc[0].Data()
+	if userInfoFromDB["password"] != password[0] {
+		statusCode := http.StatusBadRequest
+		statusMessage := Error{
+			Message:       http.StatusText(statusCode),
+			CustomMessage: "Login failed. Make sure both of your email and password is correct.",
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
+	}
+
 }
