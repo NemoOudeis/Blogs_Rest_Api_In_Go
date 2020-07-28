@@ -78,7 +78,7 @@ func main() {
 	router.HandleFunc("/signup", users.signup)
 	router.HandleFunc("/login", users.login)
 
-	router.HandleFunc("/blogs", blogs.getAllBlogPosts)
+	router.HandleFunc("/blogs", users.verifyToken(blogs.getAllBlogPosts))
 	router.HandleFunc("/blogs/create", blogs.createBlogPost)
 	router.HandleFunc("/blogs/{id}", blogs.getBlogPostByID)
 	router.HandleFunc("/blogs/delete/{id}", blogs.deleteBlogPostByID)
