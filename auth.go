@@ -9,6 +9,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"firebase.google.com/go/auth"
+	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -27,6 +28,20 @@ type User struct {
 
 func initUsers(db *firestore.Client, authClient *auth.Client) *Users {
 	return &Users{db: db, authClient: authClient}
+}
+
+func createTokenForAuth(email string) (string, error) {
+	jwtHashKey := LoadEnvFileAndReturnEnvVarValueByKey("JWT_HASH_KEY")
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_email": email,
+		"iss":        "__init__",
+	})
+	tokenString, err := token.SignedString([]byte(jwtHashKey))
+	log.Println(tokenString)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return tokenString, nil
 }
 
 func (users *Users) signup(response http.ResponseWriter, request *http.Request) {
@@ -206,12 +221,12 @@ func (users *Users) login(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	token, err := users.authClient.CustomToken(context.Background(), userInfoFromDB["id"].(string))
+	token, err := createTokenForAuth(email[0])
 	if err != nil {
 		statusCode := http.StatusServiceUnavailable
 		statusMessage := Error{
-			// err.Error() is a custom error message from client firestore API
-			Message: err.Error(),
+			Message:       http.StatusText(statusCode),
+			CustomMessage: "Failed to mint a token",
 		}
 		ExitWithError(response, statusCode, statusMessage)
 		return

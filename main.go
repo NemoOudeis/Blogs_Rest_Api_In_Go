@@ -13,7 +13,8 @@ import (
 	"google.golang.org/api/option"
 )
 
-func loadEnvFileAndReturnEnvVarValueByKey(key string) string {
+// LoadEnvFileAndReturnEnvVarValueByKey returns value of given variable inside .env
+func LoadEnvFileAndReturnEnvVarValueByKey(key string) string {
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Fatalf("Error loading .env file")
