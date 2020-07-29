@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/firestore"
 	"firebase.google.com/go/auth"
@@ -35,11 +36,12 @@ func createTokenForAuth(email string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_email": email,
 		"iss":        "__init__",
+		"exp":        time.Now().Add(time.Minute * 60).Unix(),
 	})
 	tokenString, err := token.SignedString([]byte(jwtHashKey))
 	log.Println(tokenString)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 	return tokenString, nil
 }
