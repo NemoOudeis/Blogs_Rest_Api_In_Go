@@ -84,3 +84,21 @@ func (blogs *Blogs) DeleteArticleByID(ID string) (*firestore.DocumentSnapshot, e
 	_, err := blogs.db.Collection("blogs").Doc(ID).Delete(context.Background())
 	return nil, err
 }
+
+// UpdateArticleByID updates an existing article by ID
+func (blogs *Blogs) UpdateArticleByID(ID, title, content string) error {
+	ref := blogs.db.Collection("blogs").Doc(ID)
+	err := blogs.db.RunTransaction(context.Background(), func(ctx context.Context, tx *firestore.Transaction) error {
+		_, err := tx.Get(ref)
+		if err != nil {
+			return err
+		}
+
+		return tx.Set(ref, map[string]interface{}{
+			"title":       title,
+			"content":     content,
+			"modified_at": time.Now().String(),
+		}, firestore.MergeAll)
+	})
+	return err
+}

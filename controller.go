@@ -1,12 +1,9 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
-	"time"
 
 	"cloud.google.com/go/firestore"
 	"github.com/gorilla/mux"
@@ -211,8 +208,8 @@ func (blogs *Blogs) DeleteArticleHandler(response http.ResponseWriter, request *
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
-// UpdateArticleByID updates an article by ID
-func (blogs *Blogs) UpdateArticleByID(response http.ResponseWriter, request *http.Request) {
+// UpdateArticleHandler updates an article by ID
+func (blogs *Blogs) UpdateArticleHandler(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodPut {
@@ -249,25 +246,7 @@ func (blogs *Blogs) UpdateArticleByID(response http.ResponseWriter, request *htt
 		return
 	}
 
-	ref := blogs.db.Collection("blogs").Doc(ID)
-	err := blogs.db.RunTransaction(context.Background(), func(ctx context.Context, tx *firestore.Transaction) error {
-		_, err := tx.Get(ref)
-		if err != nil {
-			statusCode := http.StatusServiceUnavailable
-			statusMessage := Error{
-				// err.Error() is a custom error message from client firestore API
-				Message: err.Error(),
-			}
-			ExitWithError(response, statusCode, statusMessage)
-			return nil
-		}
-
-		return tx.Set(ref, map[string]interface{}{
-			"title":       strings.Join(title, ""),
-			"content":     strings.Join(content, ""),
-			"modified_at": time.Now().String(),
-		}, firestore.MergeAll)
-	})
+	err := blogs.UpdateArticleByID(ID, title[0], content[0])
 	if err != nil {
 		statusCode := http.StatusServiceUnavailable
 		statusMessage := Error{
@@ -275,10 +254,10 @@ func (blogs *Blogs) UpdateArticleByID(response http.ResponseWriter, request *htt
 			Message: err.Error(),
 		}
 		ExitWithError(response, statusCode, statusMessage)
+		return
 	}
 
 	customMessage := fmt.Sprintf("The Blog post with ID %s was successfully updated.", ID)
-
 	statusCode := http.StatusOK
 	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), customMessage)
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)

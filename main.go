@@ -92,7 +92,7 @@ func main() {
 	router.HandleFunc("/blogs/create", users.verifyToken(blogs.PublishArticle))
 	router.HandleFunc("/blogs/{id}", users.verifyToken(blogs.ListArticleByID))
 	router.HandleFunc("/blogs/delete/{id}", users.verifyToken(blogs.DeleteArticleHandler))
-	router.HandleFunc("/blogs/update/{id}", users.verifyToken(blogs.UpdateArticleByID))
+	router.HandleFunc("/blogs/update/{id}", users.verifyToken(blogs.UpdateArticleHandler))
 
 	defer firestoreClient.Close()
 
