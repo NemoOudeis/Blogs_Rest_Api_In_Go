@@ -143,7 +143,7 @@ func (blogs *Blogs) ListArticleByID(response http.ResponseWriter, request *http.
 		return
 	}
 
-	docSnapshot, err := blogs.db.Collection("blogs").Doc(ID).Get(context.Background())
+	article, err := blogs.GetArticleByID(ID)
 	if err != nil {
 		statusCode := http.StatusServiceUnavailable
 		statusMessage := Error{
@@ -152,24 +152,6 @@ func (blogs *Blogs) ListArticleByID(response http.ResponseWriter, request *http.
 		}
 		ExitWithError(response, statusCode, statusMessage)
 		return
-	}
-
-	docSnapshotDatum := docSnapshot.Data()
-
-	optionalModifiedField := docSnapshotDatum["modified_at"]
-	var ModifiedField string
-	if optionalModifiedField != nil {
-		ModifiedField = docSnapshotDatum["modified_at"].(string)
-	} else {
-		ModifiedField = ""
-	}
-
-	article := Article{
-		ID:         docSnapshot.Ref.ID,
-		Title:      docSnapshotDatum["title"].(string),
-		Content:    docSnapshotDatum["content"].(string),
-		CreatedAt:  docSnapshotDatum["created_at"].(string),
-		ModifiedAt: ModifiedField,
 	}
 
 	statusCode := http.StatusOK

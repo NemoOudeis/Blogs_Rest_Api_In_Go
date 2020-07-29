@@ -50,14 +50,23 @@ func (blogs *Blogs) GetArticleByID(ID string) (*Article, error) {
 		return nil, err
 	}
 	docSnapshotDatum := docSnapshot.Data()
-	newArticle := Article{
-		ID:         ID,
+
+	optionalField := docSnapshotDatum["modified_at"]
+	var modifiedTimeSlot string
+	if optionalField != nil {
+		modifiedTimeSlot = docSnapshotDatum["modified_at"].(string)
+	} else {
+		modifiedTimeSlot = ""
+	}
+
+	article := Article{
+		ID:         docSnapshot.Ref.ID,
 		Title:      docSnapshotDatum["title"].(string),
 		Content:    docSnapshotDatum["content"].(string),
 		CreatedAt:  docSnapshotDatum["created_at"].(string),
-		ModifiedAt: "",
+		ModifiedAt: modifiedTimeSlot,
 	}
-	return &newArticle, nil
+	return &article, nil
 }
 
 // AddArticle adds a new article to the DB with given title and content
