@@ -119,7 +119,7 @@ func (users *Users) Signup(response http.ResponseWriter, request *http.Request) 
 		Email:       email[0],
 		Password:    string(hashedPassword),
 	}
-
+	log.Println(newUserInfo)
 	docRef, _, err := users.db.Collection("users").Add(context.Background(), map[string]interface{}{
 		"id":       newUserInfo.GeneratedID,
 		"email":    newUserInfo.Email,
@@ -264,11 +264,10 @@ func (users *Users) verifyToken(next http.HandlerFunc) http.HandlerFunc {
 			})
 
 			if err != nil {
-				statusCode := http.StatusBadRequest
+				statusCode := http.StatusUnauthorized
 				statusMessage := Error{
-					// err.Error() is a custom error message from client firestore API
 					Message:       http.StatusText(statusCode),
-					CustomMessage: "Token not successfully verified.",
+					CustomMessage: "Auth Failed.",
 				}
 				ExitWithError(response, statusCode, statusMessage)
 			}
@@ -276,20 +275,18 @@ func (users *Users) verifyToken(next http.HandlerFunc) http.HandlerFunc {
 			if token.Valid {
 				next.ServeHTTP(response, request)
 			} else {
-				statusCode := http.StatusBadRequest
+				statusCode := http.StatusUnauthorized
 				statusMessage := Error{
-					// err.Error() is a custom error message from client firestore API
 					Message:       http.StatusText(statusCode),
-					CustomMessage: "Token not successfully verified.",
+					CustomMessage: "Auth Failed.",
 				}
 				ExitWithError(response, statusCode, statusMessage)
 			}
 		} else {
 			statusCode := http.StatusBadRequest
 			statusMessage := Error{
-				// err.Error() is a custom error message from client firestore API
 				Message:       http.StatusText(statusCode),
-				CustomMessage: "Invalid Token structure.",
+				CustomMessage: "Invalid Token.",
 			}
 			ExitWithError(response, statusCode, statusMessage)
 			return
