@@ -10,7 +10,6 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/gorilla/mux"
-	"google.golang.org/api/iterator"
 )
 
 // HelloWorld greets the world for testing purpose
@@ -51,44 +50,17 @@ func (blogs *Blogs) ListAllArticles(response http.ResponseWriter, request *http.
 		return
 	}
 
-	docSnapshotIter := blogs.db.Collection("blogs").Documents(context.Background())
-	var articles []*Article
-	for {
-		doc, err := docSnapshotIter.Next()
-		if err == iterator.Done {
-			break
+	allArticles, err := blogs.getAllArticles()
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		statusMessage := Error{
+			Message: http.StatusText(statusCode),
 		}
-		if err != nil {
-			statusCode := http.StatusInternalServerError
-			statusMessage := Error{
-				Message: http.StatusText(statusCode),
-			}
-			ExitWithError(response, statusCode, statusMessage)
-			return
-		}
-
-		docSnapshotDatum := doc.Data()
-
-		optionalModifiedField := docSnapshotDatum["modified_at"]
-		var ModifiedField string
-		if optionalModifiedField != nil {
-			ModifiedField = docSnapshotDatum["modified_at"].(string)
-		} else {
-			ModifiedField = ""
-		}
-
-		article := Article{
-			ID:         doc.Ref.ID,
-			Title:      docSnapshotDatum["title"].(string),
-			Content:    docSnapshotDatum["content"].(string),
-			CreatedAt:  docSnapshotDatum["created_at"].(string),
-			ModifiedAt: ModifiedField,
-		}
-		articles = append(articles, &article)
+		ExitWithError(response, statusCode, statusMessage)
+		return
 	}
-
 	statusCode := http.StatusOK
-	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), articles)
+	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), allArticles)
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
