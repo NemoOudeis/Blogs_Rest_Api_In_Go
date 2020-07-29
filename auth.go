@@ -240,62 +240,49 @@ func (users *Users) login(response http.ResponseWriter, request *http.Request) {
 func (users *Users) verifyToken(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		response.Header().Set("Content-Type", "application/json")
+		authHeader := request.Header.Get("Authorization")
+		bearerToken := strings.Split(authHeader, " ")
 
-		bearerToken := users.getBearerTokenAndSetToHeader(response, request)
-		if len(bearerToken) == 0 {
-			return
-		}
-		//authToken := request.Header.Get("Authorization")
-		log.Println(bearerToken)
-		userinfo, err := users.authClient.VerifyIDToken(context.Background(), bearerToken)
-		if err != nil {
-			statusCode := http.StatusUnauthorized
+		if len(bearerToken) == 2 && bearerToken[0] == "Bearer" {
+			tokenFromClient := bearerToken[1]
+			token, err := jwt.Parse(tokenFromClient, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("Error occured")
+				}
+				jwtHashKey := LoadEnvFileAndReturnEnvVarValueByKey("JWT_HASH_KEY")
+				return []byte(jwtHashKey), nil
+			})
+
+			if err != nil {
+				statusCode := http.StatusBadRequest
+				statusMessage := Error{
+					// err.Error() is a custom error message from client firestore API
+					Message:       http.StatusText(statusCode),
+					CustomMessage: "Token not successfully verified.",
+				}
+				ExitWithError(response, statusCode, statusMessage)
+			}
+
+			if token.Valid {
+				next.ServeHTTP(response, request)
+			} else {
+				statusCode := http.StatusBadRequest
+				statusMessage := Error{
+					// err.Error() is a custom error message from client firestore API
+					Message:       http.StatusText(statusCode),
+					CustomMessage: "Token not successfully verified.",
+				}
+				ExitWithError(response, statusCode, statusMessage)
+			}
+		} else {
+			statusCode := http.StatusBadRequest
 			statusMessage := Error{
 				// err.Error() is a custom error message from client firestore API
-				Message: err.Error(),
+				Message:       http.StatusText(statusCode),
+				CustomMessage: "Invalid Token structure.",
 			}
 			ExitWithError(response, statusCode, statusMessage)
 			return
 		}
-		next.ServeHTTP(response, request)
-		log.Println(userinfo)
 	})
-
-	// users.getBearerTokenAndSetToHeader(response, request, func(response http.ResponseWriter, request *http.Request) {
-	// 	authToken := request.Header.Get("Authorization")
-	// 	userinfo, err := users.authClient.VerifyIDToken(context.Background(), authToken)
-	// 	if err != nil {
-	// 		statusCode := http.StatusUnauthorized
-	// 		statusMessage := Error{
-	// 			// err.Error() is a custom error message from client firestore API
-	// 			Message: err.Error(),
-	// 		}
-	// 		ExitWithError(response, statusCode, statusMessage)
-	// 		return
-	// 	}
-	// 	next.ServeHTTP(response, request)
-	// 	log.Println(userinfo)
-	// })
-}
-
-func (users *Users) getBearerTokenAndSetToHeader(response http.ResponseWriter, request *http.Request) string {
-	response.Header().Set("Content-Type", "application/json")
-	authHeader := request.Header.Get("Authorization")
-	bearerToken := strings.Split(authHeader, " ")
-	log.Println(bearerToken[0])
-	log.Println(bearerToken[1])
-	if len(bearerToken) == 2 && bearerToken[0] == "Bearer" {
-		headerValue := fmt.Sprintf("Bearer %s", bearerToken[1])
-		request.Header.Set("Authorization", headerValue)
-		return bearerToken[1]
-	}
-	statusCode := http.StatusBadRequest
-	statusMessage := Error{
-		// err.Error() is a custom error message from client firestore API
-		Message:       http.StatusText(statusCode),
-		CustomMessage: "Invalid Token.",
-	}
-	ExitWithError(response, statusCode, statusMessage)
-	return ""
-
 }

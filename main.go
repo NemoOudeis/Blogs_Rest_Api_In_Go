@@ -80,10 +80,10 @@ func main() {
 	router.HandleFunc("/login", users.login)
 
 	router.HandleFunc("/blogs", users.verifyToken(blogs.getAllBlogPosts))
-	router.HandleFunc("/blogs/create", blogs.createBlogPost)
-	router.HandleFunc("/blogs/{id}", blogs.getBlogPostByID)
-	router.HandleFunc("/blogs/delete/{id}", blogs.deleteBlogPostByID)
-	router.HandleFunc("/blogs/update/{id}", blogs.updateBlogPostByID)
+	router.HandleFunc("/blogs/create", users.verifyToken(blogs.createBlogPost))
+	router.HandleFunc("/blogs/{id}", users.verifyToken(blogs.getBlogPostByID))
+	router.HandleFunc("/blogs/delete/{id}", users.verifyToken(blogs.deleteBlogPostByID))
+	router.HandleFunc("/blogs/update/{id}", users.verifyToken(blogs.updateBlogPostByID))
 
 	log.Println("Listening...")
 	log.Fatal(http.ListenAndServe(":8081", router))
