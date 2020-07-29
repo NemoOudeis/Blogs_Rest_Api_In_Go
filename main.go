@@ -86,8 +86,8 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", HelloWorld).Methods("GET")
-	router.HandleFunc("/signup", users.signup)
-	router.HandleFunc("/login", users.login)
+	router.HandleFunc("/signup", users.Signup)
+	router.HandleFunc("/login", users.Login)
 	router.HandleFunc("/blogs", users.verifyToken(blogs.getAllBlogPosts))
 	router.HandleFunc("/blogs/create", users.verifyToken(blogs.createBlogPost))
 	router.HandleFunc("/blogs/{id}", users.verifyToken(blogs.getBlogPostByID))

@@ -46,7 +46,8 @@ func createTokenForAuth(email string) (string, error) {
 	return tokenString, nil
 }
 
-func (users *Users) signup(response http.ResponseWriter, request *http.Request) {
+// Signup registers a new user with given valid email and password
+func (users *Users) Signup(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodPost {
@@ -94,7 +95,7 @@ func (users *Users) signup(response http.ResponseWriter, request *http.Request) 
 		statusMessage := Error{
 			// err.Error() is a custom error message from client firestore API
 			Message:       err.Error(),
-			CustomMessage: "error creating a user",
+			CustomMessage: "Error creating a user.",
 		}
 		ExitWithError(response, statusCode, statusMessage)
 		return
@@ -103,17 +104,23 @@ func (users *Users) signup(response http.ResponseWriter, request *http.Request) 
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password[0]), 10)
 	if err != nil {
-		log.Fatal(err)
+		statusCode := http.StatusServiceUnavailable
+		statusMessage := Error{
+			Message:       err.Error(),
+			CustomMessage: "Error minting a token.",
+		}
+		ExitWithError(response, statusCode, statusMessage)
+		return
 	}
 	log.Println(password[0])
 	log.Println(hashedPassword)
 	newUserInfo := User{
 		GeneratedID: newUser.UID,
-		Email:       strings.Join(email, ""),
+		Email:       email[0],
 		Password:    string(hashedPassword),
 	}
 
-	result, _, err := users.db.Collection("users").Add(context.Background(), map[string]interface{}{
+	docRef, _, err := users.db.Collection("users").Add(context.Background(), map[string]interface{}{
 		"id":       newUserInfo.GeneratedID,
 		"email":    newUserInfo.Email,
 		"password": newUserInfo.Password,
@@ -129,7 +136,7 @@ func (users *Users) signup(response http.ResponseWriter, request *http.Request) 
 		return
 	}
 
-	docSnapshot, err := users.db.Collection("users").Doc(result.ID).Get(context.Background())
+	docSnapshot, err := users.db.Collection("users").Doc(docRef.ID).Get(context.Background())
 	if err != nil {
 		statusCode := http.StatusServiceUnavailable
 		statusMessage := Error{
@@ -149,7 +156,8 @@ func (users *Users) signup(response http.ResponseWriter, request *http.Request) 
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
-func (users *Users) login(response http.ResponseWriter, request *http.Request) {
+// Login authenticates existing user and mints token to allow exploring other endpoints
+func (users *Users) Login(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodPost {
