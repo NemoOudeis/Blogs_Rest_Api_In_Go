@@ -159,8 +159,8 @@ func (blogs *Blogs) ListArticleByID(response http.ResponseWriter, request *http.
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
-// DeleteArticleByID deletes an article by ID
-func (blogs *Blogs) DeleteArticleByID(response http.ResponseWriter, request *http.Request) {
+// DeleteArticleHandler deletes an article by ID
+func (blogs *Blogs) DeleteArticleHandler(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodDelete {
@@ -183,7 +183,7 @@ func (blogs *Blogs) DeleteArticleByID(response http.ResponseWriter, request *htt
 		return
 	}
 
-	_, err := blogs.db.Collection("blogs").Doc(ID).Get(context.Background())
+	_, err := blogs.GetArticleByID(ID)
 	if err != nil {
 		statusCode := http.StatusServiceUnavailable
 		statusMessage := Error{
@@ -194,7 +194,7 @@ func (blogs *Blogs) DeleteArticleByID(response http.ResponseWriter, request *htt
 		return
 	}
 
-	_, err = blogs.db.Collection("blogs").Doc(ID).Delete(context.Background())
+	_, err = blogs.DeleteArticleByID(ID)
 	if err != nil {
 		statusCode := http.StatusServiceUnavailable
 		statusMessage := Error{
@@ -206,7 +206,6 @@ func (blogs *Blogs) DeleteArticleByID(response http.ResponseWriter, request *htt
 	}
 
 	customMessage := fmt.Sprintf("The Blog post with ID %s was successfully deleted.", ID)
-
 	statusCode := http.StatusOK
 	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), customMessage)
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)

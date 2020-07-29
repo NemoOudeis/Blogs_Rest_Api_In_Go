@@ -78,3 +78,9 @@ func (blogs *Blogs) AddArticle(title, content string) (*firestore.DocumentRef, *
 	})
 	return result, nil, err
 }
+
+// DeleteArticleByID deletes an existing article by ID
+func (blogs *Blogs) DeleteArticleByID(ID string) (*firestore.DocumentSnapshot, error) {
+	_, err := blogs.db.Collection("blogs").Doc(ID).Delete(context.Background())
+	return nil, err
+}
