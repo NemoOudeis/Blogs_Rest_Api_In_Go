@@ -34,8 +34,8 @@ func initBlogs(db *firestore.Client) *Blogs {
 	return &Blogs{db: db}
 }
 
-// ListAllArticles lists all articles available inside the DB
-func (blogs *Blogs) ListAllArticles(response http.ResponseWriter, request *http.Request) {
+// ListAllArticlesHandler lists all articles available inside the DB
+func (blogs *Blogs) ListAllArticlesHandler(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodGet {
@@ -61,8 +61,8 @@ func (blogs *Blogs) ListAllArticles(response http.ResponseWriter, request *http.
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
-// PublishArticle publishes an article with given title and content
-func (blogs *Blogs) PublishArticle(response http.ResponseWriter, request *http.Request) {
+// PublishArticleHandler publishes an article with given title and content
+func (blogs *Blogs) PublishArticleHandler(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodPost {
@@ -115,8 +115,8 @@ func (blogs *Blogs) PublishArticle(response http.ResponseWriter, request *http.R
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
-// ListArticleByID lists an article by ID
-func (blogs *Blogs) ListArticleByID(response http.ResponseWriter, request *http.Request) {
+// ListArticleHandler lists an article by ID
+func (blogs *Blogs) ListArticleHandler(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodGet {

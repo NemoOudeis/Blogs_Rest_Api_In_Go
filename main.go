@@ -88,9 +88,9 @@ func main() {
 	router.HandleFunc("/", HelloWorld).Methods("GET")
 	router.HandleFunc("/signup", users.Signup)
 	router.HandleFunc("/login", users.Login)
-	router.HandleFunc("/blogs", users.verifyToken(blogs.ListAllArticles))
-	router.HandleFunc("/blogs/create", users.verifyToken(blogs.PublishArticle))
-	router.HandleFunc("/blogs/{id}", users.verifyToken(blogs.ListArticleByID))
+	router.HandleFunc("/blogs", users.verifyToken(blogs.ListAllArticlesHandler))
+	router.HandleFunc("/blogs/create", users.verifyToken(blogs.PublishArticleHandler))
+	router.HandleFunc("/blogs/{id}", users.verifyToken(blogs.ListArticleHandler))
 	router.HandleFunc("/blogs/delete/{id}", users.verifyToken(blogs.DeleteArticleHandler))
 	router.HandleFunc("/blogs/update/{id}", users.verifyToken(blogs.UpdateArticleHandler))
 
