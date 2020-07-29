@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"time"
 
+	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
 )
 
@@ -39,4 +41,31 @@ func (blogs *Blogs) getAllArticles() ([]*Article, error) {
 		articles = append(articles, &article)
 	}
 	return articles, nil
+}
+
+// GetArticleByID gets existing article from the DB by given ID
+func (blogs *Blogs) GetArticleByID(ID string) (*Article, error) {
+	docSnapshot, err := blogs.db.Collection("blogs").Doc(ID).Get(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	docSnapshotDatum := docSnapshot.Data()
+	newArticle := Article{
+		ID:         ID,
+		Title:      docSnapshotDatum["title"].(string),
+		Content:    docSnapshotDatum["content"].(string),
+		CreatedAt:  docSnapshotDatum["created_at"].(string),
+		ModifiedAt: "",
+	}
+	return &newArticle, nil
+}
+
+// AddArticle adds a new article to the DB with given title and content
+func (blogs *Blogs) AddArticle(title, content string) (*firestore.DocumentRef, *firestore.WriteResult, error) {
+	result, _, err := blogs.db.Collection("blogs").Add(context.Background(), map[string]interface{}{
+		"title":      title,
+		"content":    content,
+		"created_at": time.Now().String(),
+	})
+	return result, nil, err
 }

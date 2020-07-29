@@ -85,17 +85,14 @@ func (blogs *Blogs) PublishArticle(response http.ResponseWriter, request *http.R
 	if isTitleFound == false || isContentFound == false {
 		statusCode := http.StatusBadRequest
 		statusMessage := Error{
-			Message: http.StatusText(statusCode),
+			Message:       http.StatusText(statusCode),
+			CustomMessage: "Both title and content are required.",
 		}
 		ExitWithError(response, statusCode, statusMessage)
 		return
 	}
 
-	result, _, err := blogs.db.Collection("blogs").Add(context.Background(), map[string]interface{}{
-		"title":      strings.Join(title, ""),
-		"content":    strings.Join(content, ""),
-		"created_at": time.Now().String(),
-	})
+	result, _, err := blogs.AddArticle(title[0], content[0])
 
 	if err != nil {
 		statusCode := http.StatusInternalServerError
@@ -106,7 +103,7 @@ func (blogs *Blogs) PublishArticle(response http.ResponseWriter, request *http.R
 		return
 	}
 
-	docSnapshot, err := blogs.db.Collection("blogs").Doc(result.ID).Get(context.Background())
+	newArticle, err := blogs.GetArticleByID(result.ID)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		statusMessage := Error{
@@ -114,15 +111,6 @@ func (blogs *Blogs) PublishArticle(response http.ResponseWriter, request *http.R
 		}
 		ExitWithError(response, statusCode, statusMessage)
 		return
-	}
-	docSnapshotDatum := docSnapshot.Data()
-
-	newArticle := Article{
-		ID:         result.ID,
-		Title:      docSnapshotDatum["title"].(string),
-		Content:    docSnapshotDatum["content"].(string),
-		CreatedAt:  docSnapshotDatum["created_at"].(string),
-		ModifiedAt: "",
 	}
 
 	statusCode := http.StatusCreated
