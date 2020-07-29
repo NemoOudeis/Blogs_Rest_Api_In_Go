@@ -25,8 +25,8 @@ type Blogs struct {
 	db *firestore.Client
 }
 
-// BlogPost is a standard format of single blog post data (document snapshot)
-type BlogPost struct {
+// Article is a standard format of single blog post data (document snapshot)
+type Article struct {
 	ID         string `json:"id"`
 	Title      string `json:"title"`
 	Content    string `json:"content"`
@@ -52,7 +52,7 @@ func (blogs *Blogs) ListAllArticles(response http.ResponseWriter, request *http.
 	}
 
 	docSnapshotIter := blogs.db.Collection("blogs").Documents(context.Background())
-	var allBlogPosts []BlogPost
+	var articles []*Article
 	for {
 		doc, err := docSnapshotIter.Next()
 		if err == iterator.Done {
@@ -77,18 +77,18 @@ func (blogs *Blogs) ListAllArticles(response http.ResponseWriter, request *http.
 			ModifiedField = ""
 		}
 
-		blogPost := BlogPost{
+		article := Article{
 			ID:         doc.Ref.ID,
 			Title:      docSnapshotDatum["title"].(string),
 			Content:    docSnapshotDatum["content"].(string),
 			CreatedAt:  docSnapshotDatum["created_at"].(string),
 			ModifiedAt: ModifiedField,
 		}
-		allBlogPosts = append(allBlogPosts, blogPost)
+		articles = append(articles, &article)
 	}
 
 	statusCode := http.StatusOK
-	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), allBlogPosts)
+	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), articles)
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
@@ -145,7 +145,7 @@ func (blogs *Blogs) PublishArticle(response http.ResponseWriter, request *http.R
 	}
 	docSnapshotDatum := docSnapshot.Data()
 
-	newBlogPost := BlogPost{
+	newArticle := Article{
 		ID:         result.ID,
 		Title:      docSnapshotDatum["title"].(string),
 		Content:    docSnapshotDatum["content"].(string),
@@ -154,7 +154,7 @@ func (blogs *Blogs) PublishArticle(response http.ResponseWriter, request *http.R
 	}
 
 	statusCode := http.StatusCreated
-	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), newBlogPost)
+	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), newArticle)
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
@@ -204,7 +204,7 @@ func (blogs *Blogs) ListArticleByID(response http.ResponseWriter, request *http.
 		ModifiedField = ""
 	}
 
-	blogPost := BlogPost{
+	article := Article{
 		ID:         docSnapshot.Ref.ID,
 		Title:      docSnapshotDatum["title"].(string),
 		Content:    docSnapshotDatum["content"].(string),
@@ -213,7 +213,7 @@ func (blogs *Blogs) ListArticleByID(response http.ResponseWriter, request *http.
 	}
 
 	statusCode := http.StatusOK
-	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), blogPost)
+	statusMessage := SuccessJSONGenerator(http.StatusText(statusCode), article)
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 

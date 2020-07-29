@@ -270,6 +270,7 @@ func (users *Users) verifyToken(next http.HandlerFunc) http.HandlerFunc {
 					CustomMessage: "Auth Failed.",
 				}
 				ExitWithError(response, statusCode, statusMessage)
+				return
 			}
 
 			if token.Valid {
@@ -281,6 +282,7 @@ func (users *Users) verifyToken(next http.HandlerFunc) http.HandlerFunc {
 					CustomMessage: "Auth Failed.",
 				}
 				ExitWithError(response, statusCode, statusMessage)
+				return
 			}
 		} else {
 			statusCode := http.StatusBadRequest
