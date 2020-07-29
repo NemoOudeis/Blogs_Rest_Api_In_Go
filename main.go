@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -28,6 +29,13 @@ type Error struct {
 	CustomMessage string `json:"custom_message,omitempty"`
 }
 
+// Env holds global environment variable to configure environment within this app
+type Env struct {
+	Port              int
+	FirebaseProjectID string
+	JwtHashKey        string
+}
+
 // ExitWithError exits from a function when any type of err was caught during http communication
 func ExitWithError(response http.ResponseWriter, statusCode int, statusMessage Error) {
 	response.WriteHeader(statusCode)
@@ -48,18 +56,23 @@ func SuccessJSONGenerator(msgVal, dataVal interface{}) map[string]interface{} {
 	}
 }
 
+var env = Env{
+	Port:              8081,
+	FirebaseProjectID: LoadEnvFileAndReturnEnvVarValueByKey("FIREBASE_PROJECT_ID"),
+	JwtHashKey:        LoadEnvFileAndReturnEnvVarValueByKey("JWT_HASH_KEY")}
+
 func main() {
 
 	ctx := context.Background()
 	sa := option.WithCredentialsFile("yurie-s-go-api-firebase-adminsdk-qzfyx-d2587d9fd3.json")
 	app, err := firebase.NewApp(ctx, nil, sa)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("error getting specificed app from firebase: %v\n", err)
 	}
 
-	client, err := app.Firestore(ctx)
+	firestoreClient, err := app.Firestore(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("error getting Firestore client: %v\n", err)
 	}
 
 	authClient, err := app.Auth(ctx)
@@ -67,24 +80,22 @@ func main() {
 		log.Fatalf("error getting Auth client: %v\n", err)
 	}
 
-	defer client.Close()
-
-	blogs := initBlogs(client)
-	users := initUsers(client, authClient)
+	blogs := initBlogs(firestoreClient)
+	users := initUsers(firestoreClient, authClient)
 
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", HelloWorld).Methods("GET")
-
 	router.HandleFunc("/signup", users.signup)
 	router.HandleFunc("/login", users.login)
-
 	router.HandleFunc("/blogs", users.verifyToken(blogs.getAllBlogPosts))
 	router.HandleFunc("/blogs/create", users.verifyToken(blogs.createBlogPost))
 	router.HandleFunc("/blogs/{id}", users.verifyToken(blogs.getBlogPostByID))
 	router.HandleFunc("/blogs/delete/{id}", users.verifyToken(blogs.deleteBlogPostByID))
 	router.HandleFunc("/blogs/update/{id}", users.verifyToken(blogs.updateBlogPostByID))
 
+	defer firestoreClient.Close()
+
 	log.Println("Listening...")
-	log.Fatal(http.ListenAndServe(":8081", router))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", env.Port), router))
 }

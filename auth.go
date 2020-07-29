@@ -31,7 +31,7 @@ func initUsers(db *firestore.Client, authClient *auth.Client) *Users {
 }
 
 func createTokenForAuth(email string) (string, error) {
-	jwtHashKey := LoadEnvFileAndReturnEnvVarValueByKey("JWT_HASH_KEY")
+	jwtHashKey := env.JwtHashKey
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_email": email,
 		"iss":        "__init__",
