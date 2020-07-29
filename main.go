@@ -88,11 +88,11 @@ func main() {
 	router.HandleFunc("/", HelloWorld).Methods("GET")
 	router.HandleFunc("/signup", users.Signup)
 	router.HandleFunc("/login", users.Login)
-	router.HandleFunc("/blogs", users.verifyToken(blogs.getAllBlogPosts))
-	router.HandleFunc("/blogs/create", users.verifyToken(blogs.createBlogPost))
-	router.HandleFunc("/blogs/{id}", users.verifyToken(blogs.getBlogPostByID))
-	router.HandleFunc("/blogs/delete/{id}", users.verifyToken(blogs.deleteBlogPostByID))
-	router.HandleFunc("/blogs/update/{id}", users.verifyToken(blogs.updateBlogPostByID))
+	router.HandleFunc("/blogs", users.verifyToken(blogs.ListAllArticles))
+	router.HandleFunc("/blogs/create", users.verifyToken(blogs.PublishArticle))
+	router.HandleFunc("/blogs/{id}", users.verifyToken(blogs.ListArticleByID))
+	router.HandleFunc("/blogs/delete/{id}", users.verifyToken(blogs.DeleteArticleByID))
+	router.HandleFunc("/blogs/update/{id}", users.verifyToken(blogs.UpdateArticleByID))
 
 	defer firestoreClient.Close()
 

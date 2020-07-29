@@ -38,7 +38,8 @@ func initBlogs(db *firestore.Client) *Blogs {
 	return &Blogs{db: db}
 }
 
-func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.Request) {
+// ListAllArticles lists all articles available inside the DB
+func (blogs *Blogs) ListAllArticles(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodGet {
@@ -91,7 +92,8 @@ func (blogs *Blogs) getAllBlogPosts(response http.ResponseWriter, request *http.
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
-func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.Request) {
+// PublishArticle publishes an article with given title and content
+func (blogs *Blogs) PublishArticle(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodPost {
@@ -156,7 +158,8 @@ func (blogs *Blogs) createBlogPost(response http.ResponseWriter, request *http.R
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
-func (blogs *Blogs) getBlogPostByID(response http.ResponseWriter, request *http.Request) {
+// ListArticleByID lists an article by ID
+func (blogs *Blogs) ListArticleByID(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodGet {
@@ -214,7 +217,8 @@ func (blogs *Blogs) getBlogPostByID(response http.ResponseWriter, request *http.
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
-func (blogs *Blogs) deleteBlogPostByID(response http.ResponseWriter, request *http.Request) {
+// DeleteArticleByID deletes an article by ID
+func (blogs *Blogs) DeleteArticleByID(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodDelete {
@@ -266,7 +270,8 @@ func (blogs *Blogs) deleteBlogPostByID(response http.ResponseWriter, request *ht
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
-func (blogs *Blogs) updateBlogPostByID(response http.ResponseWriter, request *http.Request) {
+// UpdateArticleByID updates an article by ID
+func (blogs *Blogs) UpdateArticleByID(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 
 	if request.Method != http.MethodPut {
