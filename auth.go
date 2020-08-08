@@ -39,7 +39,7 @@ func createTokenForAuth(email string) (string, error) {
 		"exp":        time.Now().Add(time.Minute * 60).Unix(),
 	})
 	tokenString, err := token.SignedString([]byte(jwtHashKey))
-	log.Println(tokenString)
+	log.Println(tokenString) // <--- security problem
 	if err != nil {
 		return "", err
 	}
@@ -156,6 +156,16 @@ func (users *Users) Signup(response http.ResponseWriter, request *http.Request) 
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
+/*
+ Responsibilities of this function (by reading the code):
+ - parse input 	 											<- adapter layer
+ - input validation												<- business logic layer
+ - lookup user													<- business logic layer
+ - query db & handle error cases							<- adapter layer
+ - authenticate (check password)								<- business logic
+ - create JWT token											<- adapter layer
+ - return error as HTTP response (token, token missing)		<- adapter layer
+*/
 // Login authenticates existing user and mints token to allow exploring other endpoints
 func (users *Users) Login(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
@@ -194,6 +204,42 @@ func (users *Users) Login(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	// inject dependencies
+	func initLoginUseCase(db *firestore.Client) *LoginUseCase { // <-- usually happens at application startup
+		return &LoginUseCase{ persistence: &UserPersistenceWithFirebase{db: db} }
+	}
+
+	// 2 other objects
+	// 1. business logic (struct type, which only depends on persistence obj. Conforms to the obj `UserlookUpper`.)
+	// 2. persistence object
+
+	type UserPersistence interface { // <-- like input port or output port
+		LookupByEmail(email string) user
+	}
+
+	type UserPersistenceWithFirebase struct { // <--- presenter
+		db *firestore.Client
+	}
+
+	// interactor (domain)
+	type LoginUseCase struct {
+		persistence *UserPersistence
+	}
+
+	func (useCase *LoginUseCase) loginUser(email, password) user, error {
+		user, err := useCase.persistence.LookupByEmail(email)
+		if err != nil {
+			return // return new business domain error UserNotFoundException
+		}
+
+		// we check if password is correct
+
+		if err != nil {
+			return // return new business domain error InvalidPassword
+		}
+	}
+
+	token, err := useCase.LoginUser(email, passowrd)
 	iter := users.db.Collection("users").Where("email", "==", strings.Join(email, "")).Limit(1).Documents(context.Background())
 	doc, err := iter.GetAll()
 	if err != nil {
@@ -219,8 +265,8 @@ func (users *Users) Login(response http.ResponseWriter, request *http.Request) {
 	userInfoFromDB := doc[0].Data()
 	hashedPassword := userInfoFromDB["password"]
 	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword.(string)), []byte(password[0]))
-	log.Println(hashedPassword)
-	log.Println(password[0])
+	log.Println(hashedPassword) 	// <--- security problem	
+	log.Println(password[0])		// <--- security problem
 	if err != nil {
 		statusCode := http.StatusUnauthorized
 		statusMessage := Error{
@@ -247,6 +293,14 @@ func (users *Users) Login(response http.ResponseWriter, request *http.Request) {
 	ReturnSuccessfulResponse(response, statusCode, statusMessage)
 }
 
+/*
+ Responsibilities of this function (by reading the code):
+ - input validation											<- adapter layer
+ - validate jwt signature 										<- business logic layer
+ - read environment file									<- adapter layer
+ - return error as HTTP response (token, token missing)		<- adapter layer
+ - invoke next handler										<- adapter layer
+*/
 func (users *Users) verifyToken(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		response.Header().Set("Content-Type", "application/json")
@@ -263,31 +317,19 @@ func (users *Users) verifyToken(next http.HandlerFunc) http.HandlerFunc {
 				return []byte(jwtHashKey), nil
 			})
 
-			if err != nil {
-				statusCode := http.StatusUnauthorized
+			if err != nil || !token.Valid {
 				statusMessage := Error{
-					Message:       http.StatusText(statusCode),
+					Message:       http.StatusText(http.StatusUnauthorized),
 					CustomMessage: "Auth Failed.",
 				}
 				ExitWithError(response, statusCode, statusMessage)
 				return
 			}
 
-			if token.Valid {
-				next.ServeHTTP(response, request)
-			} else {
-				statusCode := http.StatusUnauthorized
-				statusMessage := Error{
-					Message:       http.StatusText(statusCode),
-					CustomMessage: "Auth Failed.",
-				}
-				ExitWithError(response, statusCode, statusMessage)
-				return
-			}
+			next.ServeHTTP(response, request)
 		} else {
-			statusCode := http.StatusBadRequest
 			statusMessage := Error{
-				Message:       http.StatusText(statusCode),
+				Message:       http.StatusText(http.StatusBadRequest),
 				CustomMessage: "Invalid Token.",
 			}
 			ExitWithError(response, statusCode, statusMessage)
